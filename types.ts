@@ -1,3 +1,12 @@
+// Fix: Add global type declarations for libraries loaded via CDN.
+// This informs TypeScript that these properties exist on the window object.
+declare global {
+  interface Window {
+    ReactRouterDOM: any;
+    Recharts: any;
+    'lucide-react': any;
+  }
+}
 
 export interface User {
   id: string;

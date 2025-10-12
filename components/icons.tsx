@@ -1,4 +1,3 @@
-
 import React from 'react';
 
 // In a real project with a bundler, you would `import { ... } from 'lucide-react'`.
@@ -29,3 +28,4 @@ export const Puzzle = Lucide.Puzzle;
 export const Code = Lucide.Code;
 export const Menu = Lucide.Menu;
 export const X = Lucide.X;
+export const Sparkles = Lucide.Sparkles;

@@ -1,60 +1,122 @@
-
-import React from 'react';
+import React, { useState } from 'react';
 import Input from '../ui/Input';
 import Button from '../ui/Button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../ui/Card';
+import Badge from '../ui/Badge';
+import { Sparkles, PlayCircle, FileText, Puzzle, Code, ChevronRight } from '../icons';
+import { generateCourseOutline } from '../../lib/gemini';
+import { Module, Lesson } from '../../types';
+
+const LessonIcon = ({ type }: { type: Lesson['type'] }) => {
+  const Icon = {
+    video: PlayCircle,
+    text: FileText,
+    quiz: Puzzle,
+    code: Code,
+  }[type];
+  if (!Icon) return null;
+  return <Icon className="w-4 h-4 text-muted-foreground flex-shrink-0" />;
+};
 
 const CreateCoursePage: React.FC = () => {
+  const [title, setTitle] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [generatedOutline, setGeneratedOutline] = useState<Module[] | null>(null);
+
+  const handleGenerateOutline = async () => {
+    if (!title.trim()) {
+      setError('Please enter a course title first.');
+      return;
+    }
+    setIsLoading(true);
+    setError(null);
+    setGeneratedOutline(null);
+
+    try {
+      const outline = await generateCourseOutline(title);
+      setGeneratedOutline(outline);
+    } catch (e: any) {
+      setError(e.message || 'An unknown error occurred.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
-    <div className="max-w-2xl mx-auto">
+    <div className="max-w-3xl mx-auto space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Create a New Course</CardTitle>
-          <CardDescription>Fill in the details below to start building your course.</CardDescription>
+          <CardTitle className="text-2xl">Create a New Course</CardTitle>
+          <CardDescription>
+            Start by entering a course title. Then, use our AI assistant to generate a structured course outline in seconds.
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          <form className="space-y-6">
-            <div>
-              <label htmlFor="title" className="block text-sm font-medium mb-1">Course Title</label>
-              <Input id="title" placeholder="e.g., Introduction to React" />
+          <div className="space-y-2">
+            <label htmlFor="title" className="block text-sm font-medium">Course Title</label>
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+              <Input
+                id="title"
+                placeholder="e.g., The Ultimate Guide to Photography"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                disabled={isLoading}
+                aria-describedby="title-error"
+                className="flex-grow"
+              />
+              <Button type="button" onClick={handleGenerateOutline} disabled={isLoading || !title.trim()} className="whitespace-nowrap w-full sm:w-auto">
+                <Sparkles className="w-4 h-4 mr-2" />
+                {isLoading ? 'Generating...' : 'Generate Outline'}
+              </Button>
             </div>
-            
-            <div>
-              <label htmlFor="description" className="block text-sm font-medium mb-1">Course Description</label>
-              <textarea 
-                id="description" 
-                rows={4} 
-                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                placeholder="Describe what your course is about..."
-              ></textarea>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-               <div>
-                  <label htmlFor="category" className="block text-sm font-medium mb-1">Category</label>
-                  <Input id="category" placeholder="e.g., Web Development" />
-                </div>
-                <div>
-                    <label htmlFor="difficulty" className="block text-sm font-medium mb-1">Difficulty</label>
-                    <select id="difficulty" className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm">
-                        <option>Beginner</option>
-                        <option>Intermediate</option>
-                        <option>Advanced</option>
-                    </select>
-                </div>
-            </div>
-
-             <div>
-              <label htmlFor="thumbnail" className="block text-sm font-medium mb-1">Thumbnail Image</label>
-              <Input id="thumbnail" type="file" />
-            </div>
-
-            <div className="pt-4">
-              <Button type="submit" className="w-full">Create Course</Button>
-            </div>
-          </form>
+            {error && <p id="title-error" className="text-sm text-destructive mt-2">{error}</p>}
+          </div>
         </CardContent>
       </Card>
+
+      {isLoading && (
+        <div className="text-center p-8 rounded-lg bg-secondary">
+          <p className="text-muted-foreground animate-pulse">Generating course outline with AI... please wait.</p>
+        </div>
+      )}
+
+      {generatedOutline && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Suggested Course Outline</CardTitle>
+            <CardDescription>
+              Here is a starting point for your course. You can now proceed to add content to each lesson.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {generatedOutline.map((module, moduleIndex) => (
+                <details key={module.id} open={moduleIndex === 0} className="group border rounded-lg overflow-hidden">
+                  <summary className="flex items-center justify-between font-semibold p-4 bg-secondary/50 hover:bg-secondary cursor-pointer list-none">
+                    <span>{module.title}</span>
+                    <ChevronRight className="w-5 h-5 transition-transform group-open:rotate-90" />
+                  </summary>
+                  <ul className="p-4 space-y-3">
+                    {module.lessons.map(lesson => (
+                      <li key={lesson.id} className="flex items-center justify-between border-b pb-3 last:border-b-0 last:pb-0">
+                        <div className="flex items-start space-x-3">
+                          <LessonIcon type={lesson.type} />
+                          <span className="text-sm font-medium">{lesson.title}</span>
+                        </div>
+                        <Badge variant="outline" className="text-xs">{lesson.duration} min</Badge>
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              ))}
+            </div>
+             <div className="border-t pt-4 mt-6 text-right">
+                <Button>Save Outline & Continue</Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 };
